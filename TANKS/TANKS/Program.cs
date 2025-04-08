@@ -18,24 +18,17 @@ public class Game
 
     public void Run()
     {
-        Init();
-        GameLoop();
-    }
-
-    private void Init()
-    {
         Raylib.InitWindow(800, 600, "Tank Game");
         Raylib.SetTargetFPS(60);
-
         ResetGame();
+        GameLoop();
     }
 
     private void ResetGame()
     {
-        player1 = new Tank(100, 250, new Color(0, 0, 255, 255), 1);  // Sininen tankki
-        player2 = new Tank(600, 250, new Color(255, 0, 0, 255), 2);  // Punainen tankki
+        player1 = new Tank(100, 250, Colors.BLUE, 1);
+        player2 = new Tank(600, 250, Colors.RED, 2);
         bullets = new List<Bullet>();
-
         gameRunning = true;
     }
 
@@ -57,38 +50,15 @@ public class Game
                 }
             }
         }
+
         Raylib.CloseWindow();
     }
 
     private void UpdateGame()
     {
-        if (player1.IsAlive)
-        {
-            if (Raylib.IsKeyDown(KeyboardKey.W)) player1.Move(0, -2);
-            if (Raylib.IsKeyDown(KeyboardKey.S)) player1.Move(0, 2);
-            if (Raylib.IsKeyDown(KeyboardKey.A)) player1.Move(-2, 0);
-            if (Raylib.IsKeyDown(KeyboardKey.D)) player1.Move(2, 0);
-        }
+        player1.HandleInput(KeyboardKey.W, KeyboardKey.S, KeyboardKey.A, KeyboardKey.D, KeyboardKey.Space, bullets);
+        player2.HandleInput(KeyboardKey.Up, KeyboardKey.Down, KeyboardKey.Left, KeyboardKey.Right, KeyboardKey.Enter, bullets);
 
-        if (player2.IsAlive)
-        {
-            if (Raylib.IsKeyDown(KeyboardKey.Up)) player2.Move(0, -2);
-            if (Raylib.IsKeyDown(KeyboardKey.Down)) player2.Move(0, 2);
-            if (Raylib.IsKeyDown(KeyboardKey.Left)) player2.Move(-2, 0);
-            if (Raylib.IsKeyDown(KeyboardKey.Right)) player2.Move(2, 0);
-        }
-
-        if (player1.IsAlive && Raylib.IsKeyPressed(KeyboardKey.Space))
-        {
-            bullets.Add(new Bullet(player1.Position, new Vector2(5, 0), player1.Id));
-        }
-
-        if (player2.IsAlive && Raylib.IsKeyPressed(KeyboardKey.Enter))
-        {
-            bullets.Add(new Bullet(player2.Position, new Vector2(-5, 0), player2.Id));
-        }
-
-        // Päivitetään ammukset ja tarkistetaan osumat
         for (int i = bullets.Count - 1; i >= 0; i--)
         {
             bullets[i].Update();
@@ -105,14 +75,12 @@ public class Game
                 bullets[i].Active = false;
             }
 
-            // Poistetaan epäaktiiviset ammukset
             if (!bullets[i].Active || bullets[i].IsOffScreen())
             {
                 bullets.RemoveAt(i);
             }
         }
 
-        // Tarkistetaan, onko peli päättynyt
         if (!player1.IsAlive || !player2.IsAlive)
         {
             gameRunning = false;
@@ -122,7 +90,7 @@ public class Game
     private void DrawGame()
     {
         Raylib.BeginDrawing();
-        Raylib.ClearBackground(new Color(144, 238, 144, 255));  // Vihreä tausta
+        Raylib.ClearBackground(Colors.LIGHTGREEN);
 
         player1.Draw();
         player2.Draw();
@@ -138,22 +106,30 @@ public class Game
     private void DrawGameOver()
     {
         Raylib.BeginDrawing();
-        Raylib.ClearBackground(new Color(144, 238, 144, 255));  // Vihreä tausta
-
-        Color black = new Color(0, 0, 0, 255);
-        Raylib.DrawText("Game Over!", 300, 250, 40, black);
-        Raylib.DrawText("Press R to Restart", 280, 300, 30, black);
-
+        Raylib.ClearBackground(Colors.LIGHTGREEN);
+        Raylib.DrawText("Game Over! Press R to Restart", 220, 250, 20, Colors.BLACK);
         Raylib.EndDrawing();
     }
 }
 
 // ==============================
-// 🚀 TANKKI-LUOKKA
+// 🎨 Värit
+// ==============================
+public static class Colors
+{
+    public static Color BLACK = new Color(0, 0, 0, 255);
+    public static Color BLUE = new Color(0, 0, 255, 255);
+    public static Color RED = new Color(255, 0, 0, 255);
+    public static Color LIGHTGREEN = new Color(144, 238, 144, 255);
+}
+
+// ==============================
+// 🚀 TANKKI
 // ==============================
 public class Tank
 {
     public Vector2 Position;
+    public Vector2 Direction;
     public Color TankColor;
     public bool IsAlive = true;
     public int Id;
@@ -163,6 +139,23 @@ public class Tank
         Position = new Vector2(x, y);
         TankColor = color;
         Id = id;
+        Direction = new Vector2(1, 0); // Oletussuunnan oikealle
+    }
+
+    public void HandleInput(KeyboardKey up, KeyboardKey down, KeyboardKey left, KeyboardKey right, KeyboardKey fire, List<Bullet> bullets)
+    {
+        if (!IsAlive) return;
+
+        if (Raylib.IsKeyDown(up)) { Move(0, -2); Direction = new Vector2(0, -1); }
+        if (Raylib.IsKeyDown(down)) { Move(0, 2); Direction = new Vector2(0, 1); }
+        if (Raylib.IsKeyDown(left)) { Move(-2, 0); Direction = new Vector2(-1, 0); }
+        if (Raylib.IsKeyDown(right)) { Move(2, 0); Direction = new Vector2(1, 0); }
+
+        if (Raylib.IsKeyPressed(fire))
+        {
+            Vector2 bulletStart = Position + new Vector2(10, 10) + Direction * 10;
+            bullets.Add(new Bullet(bulletStart, Direction * 5, Id));
+        }
     }
 
     public void Move(float dx, float dy)
@@ -178,15 +171,19 @@ public class Tank
 
     public void Draw()
     {
-        if (IsAlive)
-        {
-            Raylib.DrawRectangleRec(GetRectangle(), TankColor);
-        }
+        if (!IsAlive) return;
+
+        Raylib.DrawRectangleRec(GetRectangle(), TankColor);
+
+        // Piirrä tykki
+        Vector2 gunStart = Position + new Vector2(10, 10);
+        Vector2 gunEnd = gunStart + Direction * 15;
+        Raylib.DrawLineEx(gunStart, gunEnd, 3, Colors.BLACK);
     }
 }
 
 // ==============================
-// 🚀 AMMUS-LUOKKA
+// 🚀 AMMUS
 // ==============================
 public class Bullet
 {
@@ -197,7 +194,7 @@ public class Bullet
 
     public Bullet(Vector2 position, Vector2 speed, int shooterId)
     {
-        Shape = new Rectangle(position.X + 10, position.Y + 10, 5, 5);
+        Shape = new Rectangle(position.X, position.Y, 5, 5);
         Speed = speed;
         Active = true;
         ShooterId = shooterId;
@@ -216,7 +213,7 @@ public class Bullet
     {
         if (Active)
         {
-            Raylib.DrawRectangleRec(Shape, new Color(255, 0, 0, 255));  // Punainen ammus
+            Raylib.DrawRectangleRec(Shape, Colors.RED);
         }
     }
 
@@ -225,4 +222,3 @@ public class Bullet
         return Shape.X < 0 || Shape.X > 800 || Shape.Y < 0 || Shape.Y > 600;
     }
 }
-
