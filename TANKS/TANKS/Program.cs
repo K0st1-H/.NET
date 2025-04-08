@@ -107,14 +107,13 @@ public class Game
     {
         Raylib.BeginDrawing();
         Raylib.ClearBackground(Colors.LIGHTGREEN);
-        Raylib.DrawText("Game Over! Press R to Restart", 220, 250, 20, Colors.BLACK);
+       if (!player1.IsAlive)
+        Raylib.DrawText("Game Over! player 1 won Press R to Restart", 220, 250, 20, Colors.BLACK);
+       else
+            Raylib.DrawText("Game Over! player 2 won Press R to Restart", 220, 250, 20, Colors.BLACK);
         Raylib.EndDrawing();
     }
 }
-
-// ==============================
-// 🎨 Värit
-// ==============================
 public static class Colors
 {
     public static Color BLACK = new Color(0, 0, 0, 255);
@@ -123,9 +122,7 @@ public static class Colors
     public static Color LIGHTGREEN = new Color(144, 238, 144, 255);
 }
 
-// ==============================
-// 🚀 TANKKI
-// ==============================
+
 public class Tank
 {
     public Vector2 Position;
@@ -182,9 +179,6 @@ public class Tank
     }
 }
 
-// ==============================
-// 🚀 AMMUS
-// ==============================
 public class Bullet
 {
     public Rectangle Shape;
